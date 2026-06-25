@@ -261,7 +261,11 @@ class TraceStringWithCopy {
 // This allows this API to avoid declaring any structures so that it is portable to third_party
 // libraries.
 template <typename T>
+#if defined(__CHERI_PURE_CAPABILITY__)
+static inline void SetTraceValue(const T& arg, unsigned char* type, uintptr_t* value) {
+#else
 static inline void SetTraceValue(const T& arg, unsigned char* type, uint64_t* value) {
+#endif
     static_assert(sizeof(T) <= sizeof(uint64_t), "Trace value is larger than uint64_t");
 
     if constexpr (std::is_same<bool, T>::value) {
@@ -330,7 +334,11 @@ AddTraceEvent(
     const ARG1_TYPE& arg1_val) {
   const int num_args = 1;
   uint8_t arg_types[1];
+#if defined(__CHERI_PURE_CAPABILITY__)
+  uintptr_t arg_values[1];
+#else
   uint64_t arg_values[1];
+#endif
   SetTraceValue(arg1_val, &arg_types[0], &arg_values[0]);
   return TRACE_EVENT_API_ADD_TRACE_EVENT(
       phase, category_group_enabled, name, id,
@@ -352,7 +360,11 @@ AddTraceEvent(
   const int num_args = 2;
   const char* arg_names[2] = { arg1_name, arg2_name };
   unsigned char arg_types[2];
+#if defined(__CHERI_PURE_CAPABILITY__)
+  uintptr_t arg_values[2];
+#else
   uint64_t arg_values[2];
+#endif
   SetTraceValue(arg1_val, &arg_types[0], &arg_values[0]);
   SetTraceValue(arg2_val, &arg_types[1], &arg_values[1]);
   return TRACE_EVENT_API_ADD_TRACE_EVENT(
