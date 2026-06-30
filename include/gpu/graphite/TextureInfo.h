@@ -32,7 +32,11 @@ private:
     friend class VulkanTextureInfo;
 
     // Size is the largest of the Data subclasses assuming a 64-bit compiler.
+#if defined(__CHERI_PURE_CAPABILITY__)
+    inline constexpr static size_t kMaxSubclassSize = 144;
+#else  // __CHERI_PURE_CAPABILITY__
     inline constexpr static size_t kMaxSubclassSize = 112;
+#endif // __CHERI_PURE_CAPABILITY__
     using AnyTextureInfoData = SkAnySubclass<Data, kMaxSubclassSize>;
 
     // Base properties for all backend-specific properties. Clients managing textures directly
