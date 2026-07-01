@@ -263,10 +263,11 @@ class TraceStringWithCopy {
 template <typename T>
 #if defined(__CHERI_PURE_CAPABILITY__)
 static inline void SetTraceValue(const T& arg, unsigned char* type, uintptr_t* value) {
+    static_assert(sizeof(T) <= sizeof(uintptr_t), "Trace value is larger than uintptr_t");
 #else
 static inline void SetTraceValue(const T& arg, unsigned char* type, uint64_t* value) {
-#endif
     static_assert(sizeof(T) <= sizeof(uint64_t), "Trace value is larger than uint64_t");
+#endif
 
     if constexpr (std::is_same<bool, T>::value) {
         *type = TRACE_VALUE_TYPE_BOOL;
