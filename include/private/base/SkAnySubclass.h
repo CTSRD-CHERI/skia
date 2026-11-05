@@ -38,6 +38,7 @@ public:
     void emplace(Args&&... args) {
         static_assert(std::is_base_of_v<Base, T>);
         static_assert(sizeof(T) <= Size);
+	static_assert(alignof(T) <= alignof(SkAnySubclass<Base, Size>));
         // We're going to clean up our stored object by calling ~Base:
         static_assert(std::has_virtual_destructor_v<Base> || std::is_trivially_destructible_v<T>);
         SkASSERT(!fValid);
@@ -72,7 +73,7 @@ public:
     const Base& operator*() const { return *this->get(); }
 
 private:
-    alignas(8) std::byte fData[Size];
+    alignas(max_align_t) std::byte fData[Size];
     bool fValid = false;
 };
 
