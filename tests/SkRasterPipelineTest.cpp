@@ -2942,6 +2942,37 @@ static uint16_t h(float f) {
                   : SkTo<uint16_t>((s>>16) + (em>>13) - ((127-15)<<10));
 }
 
+#if defined(__CHERI_PURE_CAPABILITY__)
+DEF_TEST(SkRasterPipeline_tail_origin, r) {
+    constexpr int kStride = 32;
+    constexpr int kLeft = 1000000;
+    constexpr int kTop = 1000000;
+    uint32_t data[2 * kStride];
+    uint32_t buffer[2 * kStride];
+    for (int i = 0; i < 2 * kStride; ++i) {
+        data[i] = 0xff000000u | static_cast<uint32_t>(i);
+    }
+    SkRasterPipelineContexts::MemoryCtx src = {data, kStride, kLeft, kTop};
+    SkRasterPipelineContexts::MemoryCtx dst = {buffer, kStride, kLeft, kTop};
+    SkRasterPipeline_<256> p;
+    p.append(SkRasterPipelineOp::load_8888, &src);
+    p.append(SkRasterPipelineOp::store_8888, &dst);
+    for (int width = 1; width < kStride; ++width) {
+        memset(buffer, 0, sizeof(buffer));
+        p.run(kLeft + 1, kTop, width, 2);
+        for (int y = 0; y < 2; ++y) {
+            for (int x = 0; x < kStride; ++x) {
+                const int i = y * kStride + x;
+                REPORTER_ASSERT(r, buffer[i] == (x >= 1 && x <= width ? data[i] : 0));
+            }
+        }
+        REPORTER_ASSERT(r, src.pixels == data && dst.pixels == buffer);
+        REPORTER_ASSERT(r, src.left == kLeft && dst.left == kLeft);
+        REPORTER_ASSERT(r, src.top == kTop && dst.top == kTop);
+    }
+}
+#endif
+
 DEF_TEST(SkRasterPipeline_tail, r) {
     {
         float data[][4] = {

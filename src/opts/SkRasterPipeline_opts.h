@@ -1470,16 +1470,30 @@ static void patch_memory_contexts(SkSpan<SkRasterPipelineContexts::MemoryCtxPatc
     for (SkRasterPipelineContexts::MemoryCtxPatch& patch : memoryCtxPatches) {
         SkRasterPipelineContexts::MemoryCtx* ctx = patch.info.context;
 
+#if defined(__CHERI_PURE_CAPABILITY__)
+        const ptrdiff_t offset = patch.info.bytesPerPixel *
+                ((dy - ctx->top) * ctx->stride + (dx - ctx->left));
+#else
         const ptrdiff_t offset = patch.info.bytesPerPixel * (dy * ctx->stride + dx);
+#endif
         if (patch.info.load) {
             void* ctxData = SkTAddOffset<void>(ctx->pixels, offset);
             memcpy(patch.scratch, ctxData, patch.info.bytesPerPixel * tail);
         }
 
         SkASSERT(patch.backup == nullptr);
-        void* scratchFakeBase = SkTAddOffset<void>(patch.scratch, -offset);
         patch.backup = ctx->pixels;
+#if defined(__CHERI_PURE_CAPABILITY__)
+        patch.backupLeft = ctx->left;
+        patch.backupTop = ctx->top;
+        // Keep the scratch capability in bounds instead of manufacturing a fake base.
+        ctx->pixels = patch.scratch;
+        ctx->left = static_cast<int>(dx);
+        ctx->top = static_cast<int>(dy);
+#else
+        void* scratchFakeBase = SkTAddOffset<void>(patch.scratch, -offset);
         ctx->pixels = scratchFakeBase;
+#endif
     }
 }
 
@@ -1495,7 +1509,14 @@ static void restore_memory_contexts(
         ctx->pixels = patch.backup;
         patch.backup = nullptr;
 
+#if defined(__CHERI_PURE_CAPABILITY__)
+        ctx->left = patch.backupLeft;
+        ctx->top = patch.backupTop;
+        const ptrdiff_t offset = patch.info.bytesPerPixel *
+                ((dy - ctx->top) * ctx->stride + (dx - ctx->left));
+#else
         const ptrdiff_t offset = patch.info.bytesPerPixel * (dy * ctx->stride + dx);
+#endif
         if (patch.info.store) {
             void* ctxData = SkTAddOffset<void>(ctx->pixels, offset);
             memcpy(ctxData, patch.scratch, patch.info.bytesPerPixel * tail);

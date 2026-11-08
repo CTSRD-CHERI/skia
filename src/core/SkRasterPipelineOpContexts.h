@@ -69,6 +69,10 @@ struct MemoryCtxPatch {
 
     MemoryCtxInfo info;
     void* backup;  // Remembers context->pixels so we can restore it
+#if defined(__CHERI_PURE_CAPABILITY__)
+    int backupLeft;
+    int backupTop;
+#endif
 };
 
 struct GatherCtx {
